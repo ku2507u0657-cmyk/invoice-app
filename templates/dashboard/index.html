@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Your business at a glance</p>
+  </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+  <div class="stat-card stat-green">
+    <div class="stat-icon"><i class="bi bi-currency-rupee"></i></div>
+    <div class="stat-info">
+      <div class="stat-label">Revenue This Month</div>
+      <div class="stat-value">₹{{ "%.0f"|format(monthly_revenue) }}</div>
+    </div>
+    <div class="stat-trend"><i class="bi bi-graph-up-arrow"></i></div>
+  </div>
+  <div class="stat-card stat-red">
+    <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
+    <div class="stat-info">
+      <div class="stat-label">Unpaid Amount</div>
+      <div class="stat-value">₹{{ "%.0f"|format(total_unpaid) }}</div>
+    </div>
+    <div class="stat-trend"><i class="bi bi-exclamation-circle"></i></div>
+  </div>
+  <div class="stat-card stat-blue">
+    <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
+    <div class="stat-info">
+      <div class="stat-label">Active Clients</div>
+      <div class="stat-value">{{ active_clients }}</div>
+    </div>
+    <div class="stat-trend"><i class="bi bi-person-check"></i></div>
+  </div>
+  <div class="stat-card stat-purple">
+    <div class="stat-icon"><i class="bi bi-receipt"></i></div>
+    <div class="stat-info">
+      <div class="stat-label">Total Invoices</div>
+      <div class="stat-value">{{ total_invoices }}</div>
+    </div>
+    <div class="stat-trend"><i class="bi bi-file-text"></i></div>
+  </div>
+</div>
+
+<!-- Invoice Status Pills -->
+<div class="status-pills-row mb-4">
+  <div class="status-pill paid">
+    <i class="bi bi-check-circle-fill"></i>
+    <span>{{ paid_invoices }} Paid</span>
+  </div>
+  <div class="status-pill unpaid">
+    <i class="bi bi-hourglass-split"></i>
+    <span>{{ unpaid_invoices }} Unpaid</span>
+  </div>
+  <div class="status-pill overdue">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span>{{ overdue_invoices }} Overdue</span>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Revenue Chart -->
+  <div class="col-lg-8">
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <h3>Revenue Overview</h3>
+        <span class="badge-light">Last 6 Months</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="revenueChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="col-lg-4">
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <h3>Quick Actions</h3>
+      </div>
+      <div class="quick-actions">
+        <a href="{{ url_for('invoices.create') }}" class="quick-action-btn">
+          <i class="bi bi-plus-circle-fill"></i>
+          <div>
+            <div class="qa-title">New Invoice</div>
+            <div class="qa-desc">Create & send instantly</div>
+          </div>
+        </a>
+        <a href="{{ url_for('clients.add') }}" class="quick-action-btn">
+          <i class="bi bi-person-plus-fill"></i>
+          <div>
+            <div class="qa-title">Add Client</div>
+            <div class="qa-desc">Onboard new member</div>
+          </div>
+        </a>
+        <a href="{{ url_for('invoices.index') }}?status=overdue" class="quick-action-btn danger">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <div>
+            <div class="qa-title">View Overdue</div>
+            <div class="qa-desc">{{ overdue_invoices }} invoices pending</div>
+          </div>
+        </a>
+        <a href="{{ url_for('invoices.export_csv') }}" class="quick-action-btn">
+          <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+          <div>
+            <div class="qa-title">Export CSV</div>
+            <div class="qa-desc">Download all invoices</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Invoices Table -->
+<div class="card-panel mt-4">
+  <div class="card-panel-header">
+    <h3>Recent Invoices</h3>
+    <a href="{{ url_for('invoices.index') }}" class="view-all-link">View All <i class="bi bi-arrow-right"></i></a>
+  </div>
+  {% if recent_invoices %}
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Client</th>
+          <th>Amount</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in recent_invoices %}
+        <tr>
+          <td><a href="{{ url_for('invoices.view', invoice_id=invoice.id) }}" class="inv-link">{{ invoice.invoice_number }}</a></td>
+          <td>
+            <div class="client-cell">
+              <div class="client-avatar-sm">{{ invoice.client.name[0].upper() }}</div>
+              {{ invoice.client.name }}
+            </div>
+          </td>
+          <td class="amount-cell">₹{{ "%.2f"|format(invoice.total) }}</td>
+          <td>{{ invoice.due_date.strftime('%d %b %Y') }}</td>
+          <td><span class="status-badge status-{{ invoice.status }}">{{ invoice.status|capitalize }}</span></td>
+          <td>
+            <a href="{{ url_for('invoices.view', invoice_id=invoice.id) }}" class="action-btn">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-receipt"></i>
+    <p>No invoices yet. <a href="{{ url_for('invoices.create') }}">Create your first invoice!</a></p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadChart() {
+  const res = await fetch('/api/chart-data');
+  const data = await res.json();
+  const labels = data.map(d => d.month);
+  const revenue = data.map(d => d.revenue);
+  const billed = data.map(d => d.billed);
+
+  const ctx = document.getElementById('revenueChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Collected (₹)',
+          data: revenue,
+          backgroundColor: 'rgba(41, 182, 112, 0.85)',
+          borderRadius: 6,
+          borderSkipped: false,
+        },
+        {
+          label: 'Billed (₹)',
+          data: billed,
+          backgroundColor: 'rgba(233, 69, 96, 0.3)',
+          borderColor: 'rgba(233, 69, 96, 0.8)',
+          borderWidth: 1.5,
+          borderRadius: 6,
+          borderSkipped: false,
+          type: 'bar'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { 
+          position: 'top',
+          labels: { color: '#aaa', font: { family: 'DM Sans' } }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => `₹${ctx.parsed.y.toLocaleString('en-IN')}`
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#888' } },
+        y: { 
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { 
+            color: '#888',
+            callback: v => '₹' + v.toLocaleString('en-IN')
+          }
+        }
+      }
+    }
+  });
+}
+loadChart();
+</script>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Invoices{% endblock %}
+{% block breadcrumb %}Invoices{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Invoices</h1>
+    <p class="page-subtitle">{{ invoices.total }} total invoices</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('invoices.export_csv') }}" class="btn-secondary-custom">
+      <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+    </a>
+    <a href="{{ url_for('invoices.create') }}" class="btn-primary-custom">
+      <i class="bi bi-plus-lg"></i> New Invoice
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar mb-4">
+  <form method="GET" class="d-flex gap-3 flex-wrap align-items-center">
+    <div class="input-icon-wrap" style="flex:1; min-width:200px">
+      <i class="bi bi-search"></i>
+      <input type="text" name="search" class="form-control" placeholder="Search by client name..."
+             value="{{ search }}">
+    </div>
+    <select name="status" class="form-select" style="width:auto" onchange="this.form.submit()">
+      <option value="">All Status</option>
+      <option value="unpaid" {% if status_filter == 'unpaid' %}selected{% endif %}>Unpaid</option>
+      <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Paid</option>
+      <option value="overdue" {% if status_filter == 'overdue' %}selected{% endif %}>Overdue</option>
+    </select>
+    <button type="submit" class="btn-search">Filter</button>
+    {% if search or status_filter %}
+    <a href="{{ url_for('invoices.index') }}" class="btn-secondary-custom btn-sm">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+{% if invoices.items %}
+<div class="card-panel">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Client</th>
+          <th>Amount</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in invoices.items %}
+        <tr class="{{ 'row-overdue' if invoice.status == 'overdue' else '' }}">
+          <td><a href="{{ url_for('invoices.view', invoice_id=invoice.id) }}" class="inv-link">{{ invoice.invoice_number }}</a></td>
+          <td>
+            <div class="client-cell">
+              <div class="client-avatar-sm">{{ invoice.client.name[0].upper() }}</div>
+              <a href="{{ url_for('clients.view', client_id=invoice.client.id) }}" class="client-link">
+                {{ invoice.client.name }}
+              </a>
+            </div>
+          </td>
+          <td class="amount-cell">₹{{ "%.2f"|format(invoice.total) }}</td>
+          <td class="{{ 'text-danger' if invoice.is_overdue else '' }}">
+            {{ invoice.due_date.strftime('%d %b %Y') }}
+            {% if invoice.is_overdue %}<i class="bi bi-exclamation-circle-fill text-danger ms-1"></i>{% endif %}
+          </td>
+          <td><span class="status-badge status-{{ invoice.status }}">{{ invoice.status|capitalize }}</span></td>
+          <td class="actions-cell">
+            <a href="{{ url_for('invoices.view', invoice_id=invoice.id) }}" class="action-btn" title="View">
+              <i class="bi bi-eye"></i>
+            </a>
+            <a href="{{ url_for('invoices.download_pdf', invoice_id=invoice.id) }}" class="action-btn" title="Download PDF">
+              <i class="bi bi-download"></i>
+            </a>
+            {% if invoice.status != 'paid' %}
+            <form method="POST" action="{{ url_for('invoices.mark_paid', invoice_id=invoice.id) }}" style="display:inline">
+              <button type="submit" class="action-btn success" title="Mark Paid">
+                <i class="bi bi-check-lg"></i>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if invoices.pages > 1 %}
+  <div class="pagination-wrap">
+    <nav>
+      <ul class="pagination pagination-sm">
+        {% for page in invoices.iter_pages() %}
+          {% if page %}
+            <li class="page-item {% if page == invoices.page %}active{% endif %}">
+              <a class="page-link" href="?page={{ page }}&status={{ status_filter }}&search={{ search }}">{{ page }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="empty-state-full">
+  <i class="bi bi-receipt"></i>
+  <h3>No invoices found</h3>
+  <p>{% if search or status_filter %}Try adjusting your filters.{% else %}Create your first invoice to get started.{% endif %}</p>
+  <a href="{{ url_for('invoices.create') }}" class="btn-primary-custom">Create Invoice</a>
+</div>
+{% endif %}
+{% endblock %}

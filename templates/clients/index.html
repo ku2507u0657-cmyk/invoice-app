@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Clients{% endblock %}
+{% block breadcrumb %}Clients{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Clients</h1>
+    <p class="page-subtitle">{{ clients.total }} total clients</p>
+  </div>
+  <a href="{{ url_for('clients.add') }}" class="btn-primary-custom">
+    <i class="bi bi-plus-lg"></i> Add Client
+  </a>
+</div>
+
+<!-- Search -->
+<div class="search-bar mb-4">
+  <form method="GET" action="">
+    <div class="input-icon-wrap">
+      <i class="bi bi-search"></i>
+      <input type="text" name="search" class="form-control" placeholder="Search clients by name or email..."
+             value="{{ search }}">
+      <button type="submit" class="btn-search">Search</button>
+    </div>
+  </form>
+</div>
+
+{% if clients.items %}
+<div class="card-panel">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Phone</th>
+          <th>Monthly Fee</th>
+          <th>Status</th>
+          <th>Invoices</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for client in clients.items %}
+        <tr>
+          <td>
+            <div class="client-cell">
+              <div class="client-avatar">{{ client.name[0].upper() }}</div>
+              <div>
+                <div class="client-name">{{ client.name }}</div>
+                <div class="client-email">{{ client.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ client.phone }}</td>
+          <td class="amount-cell">₹{{ "%.0f"|format(client.monthly_fee) }}</td>
+          <td>
+            <span class="status-badge {{ 'status-paid' if client.is_active else 'status-overdue' }}">
+              {{ 'Active' if client.is_active else 'Inactive' }}
+            </span>
+          </td>
+          <td>{{ client.invoices.count() }}</td>
+          <td class="actions-cell">
+            <a href="{{ url_for('clients.view', client_id=client.id) }}" class="action-btn" title="View">
+              <i class="bi bi-eye"></i>
+            </a>
+            <a href="{{ url_for('invoices.create') }}?client_id={{ client.id }}" class="action-btn" title="New Invoice">
+              <i class="bi bi-plus-circle"></i>
+            </a>
+            <a href="{{ url_for('clients.edit', client_id=client.id) }}" class="action-btn" title="Edit">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <form method="POST" action="{{ url_for('clients.delete', client_id=client.id) }}"
+                  style="display:inline" onsubmit="return confirm('Delete {{ client.name }}? This will also delete all their invoices.')">
+              <button type="submit" class="action-btn danger" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <!-- Pagination -->
+  {% if clients.pages > 1 %}
+  <div class="pagination-wrap">
+    <nav>
+      <ul class="pagination pagination-sm">
+        {% for page in clients.iter_pages() %}
+          {% if page %}
+            <li class="page-item {% if page == clients.page %}active{% endif %}">
+              <a class="page-link" href="?page={{ page }}&search={{ search }}">{{ page }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="empty-state-full">
+  <i class="bi bi-people"></i>
+  <h3>No clients yet</h3>
+  <p>Start by adding your first client to generate invoices.</p>
+  <a href="{{ url_for('clients.add') }}" class="btn-primary-custom">Add First Client</a>
+</div>
+{% endif %}
+{% endblock %}

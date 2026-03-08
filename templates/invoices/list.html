@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Invoices{% endblock %}
+{% block page_title %}Invoices{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <div>
+    <h2 class="page-heading">Invoices</h2>
+    <p class="page-sub">{{ invoices|length }} invoice(s) found</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('invoices.export_csv') }}{% if status_filter %}?status={{ status_filter }}{% endif %}" class="btn btn-outline">
+      <i class="bi bi-download me-2"></i>Export CSV
+    </a>
+    <a href="{{ url_for('invoices.create_invoice') }}" class="btn btn-primary">
+      <i class="bi bi-plus-circle me-2"></i>New Invoice
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card-panel mb-4">
+  <form method="GET" class="d-flex gap-3 flex-wrap">
+    <div class="flex-grow-1">
+      <div class="input-icon-wrap">
+        <i class="bi bi-search input-icon"></i>
+        <input type="text" name="search" value="{{ search }}" class="form-control has-icon"
+               placeholder="Search by client name or invoice number…">
+      </div>
+    </div>
+    <select name="status" class="form-select" style="width:auto;">
+      <option value="" {% if not status_filter %}selected{% endif %}>All Status</option>
+      <option value="unpaid" {% if status_filter == 'unpaid' %}selected{% endif %}>Unpaid</option>
+      <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Paid</option>
+      <option value="overdue" {% if status_filter == 'overdue' %}selected{% endif %}>Overdue</option>
+    </select>
+    <button type="submit" class="btn btn-primary">Filter</button>
+    {% if status_filter or search %}
+    <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-outline">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Status summary pills -->
+<div class="d-flex gap-3 mb-4 flex-wrap">
+  <a href="{{ url_for('invoices.list_invoices') }}" class="filter-pill {% if not status_filter %}filter-pill--active{% endif %}">
+    All
+  </a>
+  <a href="{{ url_for('invoices.list_invoices') }}?status=unpaid" class="filter-pill filter-pill--unpaid {% if status_filter == 'unpaid' %}filter-pill--active{% endif %}">
+    Unpaid
+  </a>
+  <a href="{{ url_for('invoices.list_invoices') }}?status=paid" class="filter-pill filter-pill--paid {% if status_filter == 'paid' %}filter-pill--active{% endif %}">
+    Paid
+  </a>
+  <a href="{{ url_for('invoices.list_invoices') }}?status=overdue" class="filter-pill filter-pill--overdue {% if status_filter == 'overdue' %}filter-pill--active{% endif %}">
+    Overdue
+  </a>
+</div>
+
+<!-- Table -->
+<div class="card-panel">
+  {% if invoices %}
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Client</th>
+          <th>Amount</th>
+          <th>GST</th>
+          <th>Total</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr class="{{ 'row-overdue' if inv.status == 'overdue' else '' }}">
+          <td><span class="invoice-num">{{ inv.invoice_number }}</span></td>
+          <td>
+            <a href="{{ url_for('clients.view_client', client_id=inv.client_id) }}" class="client-link">
+              {{ inv.client.name }}
+            </a>
+          </td>
+          <td>₹ {{ "{:,.2f}".format(inv.amount) }}</td>
+          <td>₹ {{ "{:,.2f}".format(inv.gst_amount) }}</td>
+          <td><strong>₹ {{ "{:,.2f}".format(inv.total) }}</strong></td>
+          <td class="{{ 'text-danger' if inv.is_overdue() else '' }}">
+            {{ inv.due_date.strftime('%d %b %Y') }}
+          </td>
+          <td>
+            <span class="status-badge status-{{ inv.status }}">{{ inv.status.title() }}</span>
+          </td>
+          <td class="text-muted">{{ inv.created_at.strftime('%d %b %Y') }}</td>
+          <td>
+            <a href="{{ url_for('invoices.view_invoice', invoice_id=inv.id) }}" class="btn-icon" title="View"><i class="bi bi-eye"></i></a>
+            <a href="{{ url_for('invoices.download_pdf', invoice_id=inv.id) }}" class="btn-icon" title="Download PDF"><i class="bi bi-file-pdf"></i></a>
+            {% if inv.status != 'paid' %}
+            <form method="POST" action="{{ url_for('invoices.mark_paid', invoice_id=inv.id) }}" class="d-inline">
+              <button type="submit" class="btn-icon btn-icon--green" title="Mark Paid"><i class="bi bi-check-circle"></i></button>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('invoices.mark_unpaid', invoice_id=inv.id) }}" class="d-inline">
+              <button type="submit" class="btn-icon btn-icon--red" title="Mark Unpaid"><i class="bi bi-x-circle"></i></button>
+            </form>
+            {% endif %}
+            <form method="POST" action="{{ url_for('invoices.delete_invoice', invoice_id=inv.id) }}"
+                  class="d-inline" onsubmit="return confirm('Delete invoice #{{ inv.invoice_number }}?')">
+              <button type="submit" class="btn-icon btn-icon--red" title="Delete"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-receipt"></i>
+    <p>No invoices found. <a href="{{ url_for('invoices.create_invoice') }}">Create your first invoice</a>.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

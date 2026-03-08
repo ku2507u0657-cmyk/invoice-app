@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Clients{% endblock %}
+{% block page_title %}Clients{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <div>
+    <h2 class="page-heading">Client Management</h2>
+    <p class="page-sub">{{ clients|length }} client(s) found</p>
+  </div>
+  <a href="{{ url_for('clients.add_client') }}" class="btn btn-primary">
+    <i class="bi bi-person-plus me-2"></i>Add Client
+  </a>
+</div>
+
+<!-- Search -->
+<div class="card-panel mb-4">
+  <form method="GET" class="d-flex gap-3">
+    <div class="flex-grow-1">
+      <div class="input-icon-wrap">
+        <i class="bi bi-search input-icon"></i>
+        <input type="text" name="search" value="{{ search }}" class="form-control has-icon"
+               placeholder="Search by name, email or phone…">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Search</button>
+    {% if search %}
+    <a href="{{ url_for('clients.list_clients') }}" class="btn btn-outline">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Client Table -->
+<div class="card-panel">
+  {% if clients %}
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Monthly Fee</th>
+          <th>GSTIN</th>
+          <th>Status</th>
+          <th>Joined</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for client in clients %}
+        <tr>
+          <td class="text-muted">{{ client.id }}</td>
+          <td>
+            <a href="{{ url_for('clients.view_client', client_id=client.id) }}" class="client-link fw-600">
+              {{ client.name }}
+            </a>
+          </td>
+          <td>{{ client.phone }}</td>
+          <td>{{ client.email }}</td>
+          <td><strong>₹ {{ "{:,.0f}".format(client.monthly_fee) }}</strong></td>
+          <td>{{ client.gst_number or '—' }}</td>
+          <td>
+            <span class="status-badge {{ 'status-paid' if client.is_active else 'status-overdue' }}">
+              {{ 'Active' if client.is_active else 'Inactive' }}
+            </span>
+          </td>
+          <td class="text-muted">{{ client.created_at.strftime('%d %b %Y') }}</td>
+          <td>
+            <a href="{{ url_for('clients.view_client', client_id=client.id) }}" class="btn-icon" title="View"><i class="bi bi-eye"></i></a>
+            <a href="{{ url_for('invoices.create_invoice') }}?client_id={{ client.id }}" class="btn-icon btn-icon--green" title="New Invoice"><i class="bi bi-plus-circle"></i></a>
+            <a href="{{ url_for('clients.edit_client', client_id=client.id) }}" class="btn-icon btn-icon--blue" title="Edit"><i class="bi bi-pencil"></i></a>
+            <form method="POST" action="{{ url_for('clients.delete_client', client_id=client.id) }}"
+                  class="d-inline" onsubmit="return confirm('Delete {{ client.name }}? This will delete all their invoices.')">
+              <button type="submit" class="btn-icon btn-icon--red" title="Delete"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-people"></i>
+    <p>No clients found. <a href="{{ url_for('clients.add_client') }}">Add your first client</a>.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

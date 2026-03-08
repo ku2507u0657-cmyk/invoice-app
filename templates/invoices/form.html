@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}New Invoice{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('invoices.index') }}">Invoices</a> / New Invoice
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Create New Invoice</h1>
+    <p class="page-subtitle">Generate a GST invoice with UPI QR code</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card-panel">
+      <form method="POST" id="invoiceForm">
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="form-group-custom">
+              <label>Select Client <span class="required">*</span></label>
+              <select name="client_id" id="clientSelect" class="form-select" required onchange="fillAmount()">
+                <option value="">— Choose a client —</option>
+                {% for client in clients %}
+                <option value="{{ client.id }}" 
+                        data-fee="{{ client.monthly_fee }}"
+                        {% if form_data.get('client_id')|string == client.id|string %}selected{% endif %}>
+                  {{ client.name }} — ₹{{ "%.0f"|format(client.monthly_fee) }}/month
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group-custom">
+              <label>Amount (₹) <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="bi bi-currency-rupee"></i>
+                <input type="number" name="amount" id="amountInput" class="form-control"
+                       placeholder="1500" required min="1" step="0.01"
+                       value="{{ form_data.get('amount', '') }}"
+                       oninput="calculateTotals()">
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group-custom">
+              <label>GST Rate (%)</label>
+              <select name="gst_rate" id="gstRate" class="form-select" onchange="calculateTotals()">
+                <option value="0" {% if form_data.get('gst_rate', '18') == '0' %}selected{% endif %}>0% (Exempt)</option>
+                <option value="5" {% if form_data.get('gst_rate') == '5' %}selected{% endif %}>5%</option>
+                <option value="12" {% if form_data.get('gst_rate') == '12' %}selected{% endif %}>12%</option>
+                <option value="18" {% if form_data.get('gst_rate', '18') == '18' or not form_data.get('gst_rate') %}selected{% endif %}>18% (Standard)</option>
+                <option value="28" {% if form_data.get('gst_rate') == '28' %}selected{% endif %}>28%</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group-custom">
+              <label>Due Date <span class="required">*</span></label>
+              <input type="date" name="due_date" class="form-control" required
+                     value="{{ form_data.get('due_date', '') }}">
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="form-group-custom">
+              <label>Description <span class="optional">(Optional)</span></label>
+              <input type="text" name="description" class="form-control"
+                     placeholder="Monthly Fee - June 2025"
+                     value="{{ form_data.get('description', '') }}">
+            </div>
+          </div>
+        </div>
+        <div class="form-actions mt-4">
+          <a href="{{ url_for('invoices.index') }}" class="btn-secondary-custom">Cancel</a>
+          <button type="submit" class="btn-primary-custom">
+            <i class="bi bi-receipt-cutoff"></i> Generate Invoice
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Live Preview -->
+  <div class="col-lg-4">
+    <div class="card-panel invoice-preview-card">
+      <div class="card-panel-header"><h3>Invoice Preview</h3></div>
+      <div class="preview-body">
+        <div class="preview-row">
+          <span>Subtotal</span>
+          <span id="previewAmount">₹0.00</span>
+        </div>
+        <div class="preview-row">
+          <span>GST (<span id="previewGstRate">18</span>%)</span>
+          <span id="previewGst">₹0.00</span>
+        </div>
+        <div class="preview-row preview-total">
+          <span>Total</span>
+          <span id="previewTotal">₹0.00</span>
+        </div>
+      </div>
+      <div class="preview-info mt-3">
+        <i class="bi bi-info-circle me-2"></i>
+        PDF will be auto-generated and emailed to the client.
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function fillAmount() {
+  const sel = document.getElementById('clientSelect');
+  const opt = sel.options[sel.selectedIndex];
+  const fee = opt.getAttribute('data-fee');
+  if (fee) {
+    document.getElementById('amountInput').value = parseFloat(fee).toFixed(2);
+    calculateTotals();
+  }
+}
+function calculateTotals() {
+  const amount = parseFloat(document.getElementById('amountInput').value) || 0;
+  const gstRate = parseFloat(document.getElementById('gstRate').value) || 0;
+  const gstAmt = amount * gstRate / 100;
+  const total = amount + gstAmt;
+  document.getElementById('previewAmount').textContent = '₹' + amount.toFixed(2);
+  document.getElementById('previewGstRate').textContent = gstRate;
+  document.getElementById('previewGst').textContent = '₹' + gstAmt.toFixed(2);
+  document.getElementById('previewTotal').textContent = '₹' + total.toFixed(2);
+}
+// Init
+calculateTotals();
+// If client preselected, fill amount
+window.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('clientSelect');
+  if (sel.value) fillAmount();
+});
+</script>
+{% endblock %}

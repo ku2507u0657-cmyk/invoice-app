@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if action == 'edit' else 'Add' }} Client{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('clients.index') }}">Clients</a> / {{ 'Edit' if action == 'edit' else 'Add Client' }}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ 'Edit Client' if action == 'edit' else 'Add New Client' }}</h1>
+    <p class="page-subtitle">{{ 'Update client information' if action == 'edit' else 'Add a new student or gym member' }}</p>
+  </div>
+</div>
+
+<div class="form-container">
+  <form method="POST">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="form-group-custom">
+          <label>Full Name <span class="required">*</span></label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. Rahul Sharma" required
+                 value="{{ form_data.get('name', '') if form_data is mapping else form_data.name }}">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="form-group-custom">
+          <label>Phone Number <span class="required">*</span></label>
+          <input type="text" name="phone" class="form-control" placeholder="+91 98765 43210" required
+                 value="{{ form_data.get('phone', '') if form_data is mapping else form_data.phone }}">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="form-group-custom">
+          <label>Email Address <span class="required">*</span></label>
+          <input type="email" name="email" class="form-control" placeholder="rahul@example.com" required
+                 value="{{ form_data.get('email', '') if form_data is mapping else form_data.email }}">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="form-group-custom">
+          <label>Monthly Fee (₹) <span class="required">*</span></label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-currency-rupee"></i>
+            <input type="number" name="monthly_fee" class="form-control" placeholder="1500" required
+                   min="1" step="0.01"
+                   value="{{ form_data.get('monthly_fee', '') if form_data is mapping else form_data.monthly_fee }}">
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="form-group-custom">
+          <label>Client GSTIN <span class="optional">(Optional)</span></label>
+          <input type="text" name="gst_number" class="form-control" placeholder="27AABCU9603R1ZX"
+                 value="{{ form_data.get('gst_number', '') if form_data is mapping else (form_data.gst_number or '') }}">
+        </div>
+      </div>
+      {% if action == 'edit' %}
+      <div class="col-md-6">
+        <div class="form-group-custom">
+          <label>Status</label>
+          <div class="toggle-wrap">
+            <label class="toggle-switch">
+              <input type="checkbox" name="is_active" {% if form_data is mapping %}{% if form_data.get('is_active') %}checked{% endif %}{% else %}{% if form_data.is_active %}checked{% endif %}{% endif %}>
+              <span class="toggle-slider"></span>
+            </label>
+            <span>Active Client</span>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    <div class="form-actions mt-4">
+      <a href="{{ url_for('clients.index') }}" class="btn-secondary-custom">Cancel</a>
+      <button type="submit" class="btn-primary-custom">
+        <i class="bi bi-{{ 'check-lg' if action == 'edit' else 'plus-lg' }}"></i>
+        {{ 'Update Client' if action == 'edit' else 'Add Client' }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

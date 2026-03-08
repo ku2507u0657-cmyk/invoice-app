@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('invoices.index') }}">Invoices</a> / {{ invoice.invoice_number }}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ invoice.invoice_number }}</h1>
+    <p class="page-subtitle">
+      Created {{ invoice.created_at.strftime('%d %B %Y') }}
+      &nbsp;
+      <span class="status-badge status-{{ invoice.status }}">{{ invoice.status|capitalize }}</span>
+    </p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('invoices.download_pdf', invoice_id=invoice.id) }}" class="btn-secondary-custom">
+      <i class="bi bi-file-pdf"></i> Download PDF
+    </a>
+    {% if invoice.status != 'paid' %}
+    <form method="POST" action="{{ url_for('invoices.mark_paid', invoice_id=invoice.id) }}">
+      <button type="submit" class="btn-success-custom">
+        <i class="bi bi-check-circle"></i> Mark as Paid
+      </button>
+    </form>
+    <form method="POST" action="{{ url_for('invoices.send_reminder', invoice_id=invoice.id) }}">
+      <button type="submit" class="btn-warning-custom">
+        <i class="bi bi-bell"></i> Send Reminder
+      </button>
+    </form>
+    {% else %}
+    <form method="POST" action="{{ url_for('invoices.mark_unpaid', invoice_id=invoice.id) }}">
+      <button type="submit" class="btn-secondary-custom">
+        <i class="bi bi-x-circle"></i> Mark Unpaid
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Invoice Details Card -->
+  <div class="col-lg-8">
+    <div class="card-panel invoice-display">
+      <div class="invoice-display-header">
+        <div>
+          <div class="invoice-company-name">{{ config.COMPANY_NAME }}</div>
+          <div class="invoice-company-address">{{ config.COMPANY_ADDRESS }}</div>
+          <div class="invoice-company-address">{{ config.COMPANY_PHONE }} | {{ config.COMPANY_EMAIL }}</div>
+          {% if config.COMPANY_GSTIN %}<div class="invoice-company-address">GSTIN: {{ config.COMPANY_GSTIN }}</div>{% endif %}
+        </div>
+        <div class="text-end">
+          <div class="invoice-heading">INVOICE</div>
+          <div class="invoice-meta-line"><strong>#{{ invoice.invoice_number }}</strong></div>
+          <div class="invoice-meta-line">Date: {{ invoice.created_at.strftime('%d %B %Y') }}</div>
+          <div class="invoice-meta-line">Due: {{ invoice.due_date.strftime('%d %B %Y') }}</div>
+        </div>
+      </div>
+      <hr class="invoice-divider">
+
+      <div class="invoice-bill-to">
+        <div class="bill-to-label">BILL TO</div>
+        <div class="bill-to-name">{{ client.name }}</div>
+        <div class="bill-to-detail">{{ client.phone }} | {{ client.email }}</div>
+        {% if client.gst_number %}<div class="bill-to-detail">GSTIN: {{ client.gst_number }}</div>{% endif %}
+      </div>
+
+      <table class="invoice-items-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Description</th>
+            <th class="text-end">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>{{ invoice.description or 'Monthly Fee' }}</td>
+            <td class="text-end">₹{{ "%.2f"|format(invoice.amount) }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="invoice-totals">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <span>₹{{ "%.2f"|format(invoice.amount) }}</span>
+        </div>
+        <div class="totals-row">
+          <span>GST ({{ "%.0f"|format(invoice.gst_rate) }}%)</span>
+          <span>₹{{ "%.2f"|format(invoice.gst_amount) }}</span>
+        </div>
+        <div class="totals-row totals-grand">
+          <span>TOTAL</span>
+          <span>₹{{ "%.2f"|format(invoice.total) }}</span>
+        </div>
+        {% if invoice.status == 'paid' and invoice.paid_date %}
+        <div class="totals-row totals-paid">
+          <span>✓ Paid On</span>
+          <span>{{ invoice.paid_date.strftime('%d %B %Y') }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="invoice-upi-section">
+        <div>
+          <div class="upi-label">Pay via UPI</div>
+          <div class="upi-id">{{ config.UPI_ID }}</div>
+          <div class="upi-note">Or scan QR from the PDF</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Info -->
+  <div class="col-lg-4">
+    <div class="card-panel mb-3">
+      <div class="card-panel-header"><h3>Client Details</h3></div>
+      <div class="info-list">
+        <div class="info-item">
+          <div class="client-avatar">{{ client.name[0].upper() }}</div>
+          <div>
+            <div class="info-value"><a href="{{ url_for('clients.view', client_id=client.id) }}">{{ client.name }}</a></div>
+            <div class="info-label">{{ client.email }}</div>
+            <div class="info-label">{{ client.phone }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-panel mb-3">
+      <div class="card-panel-header"><h3>Invoice Info</h3></div>
+      <div class="info-list">
+        <div class="info-item-row">
+          <span class="info-label">Invoice #</span>
+          <span class="info-value mono">{{ invoice.invoice_number }}</span>
+        </div>
+        <div class="info-item-row">
+          <span class="info-label">Created</span>
+          <span class="info-value">{{ invoice.created_at.strftime('%d %b %Y') }}</span>
+        </div>
+        <div class="info-item-row">
+          <span class="info-label">Due Date</span>
+          <span class="info-value {{ 'text-danger' if invoice.is_overdue else '' }}">{{ invoice.due_date.strftime('%d %b %Y') }}</span>
+        </div>
+        <div class="info-item-row">
+          <span class="info-label">Status</span>
+          <span class="status-badge status-{{ invoice.status }}">{{ invoice.status|capitalize }}</span>
+        </div>
+        {% if invoice.reminder_count > 0 %}
+        <div class="info-item-row">
+          <span class="info-label">Reminders Sent</span>
+          <span class="info-value">{{ invoice.reminder_count }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if invoice.reminder_logs %}
+    <div class="card-panel">
+      <div class="card-panel-header"><h3>Reminder History</h3></div>
+      <div class="reminder-log">
+        {% for log in invoice.reminder_logs[-5:] %}
+        <div class="log-item">
+          <span class="log-status {{ 'log-success' if log.status == 'sent' else 'log-fail' }}">
+            {{ log.status|capitalize }}
+          </span>
+          <span class="log-date">{{ log.sent_at.strftime('%d %b, %I:%M %p') }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
