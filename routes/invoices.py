@@ -108,16 +108,13 @@ def create():
         db.session.commit()
 
         # Send email
-        try:
-            from utils.email_sender import send_invoice_email
-            config = current_app.config_obj
-            if pdf_full_path and os.path.exists(pdf_full_path):
-                send_invoice_email(invoice, client, pdf_full_path, config)
-        except Exception as e:
-            flash(f'Warning: Could not send email: {str(e)}', 'warning')
-
-        flash(f'Invoice #{invoice_number} created successfully!', 'success')
-        return redirect(url_for('invoices.view', invoice_id=invoice.id))
+try:
+    from utils.email_sender import send_invoice_email
+    config = current_app.config_obj
+    if pdf_full_path and os.path.exists(pdf_full_path):
+        # send_invoice_email(invoice, client, pdf_full_path, config)
+except Exception as e:
+    flash(f'Warning: Could not send email: {str(e)}', 'warning')
 
     # Pre-fill amount from client's monthly fee
     preselect_client_id = request.args.get('client_id', type=int)
