@@ -14,6 +14,12 @@ def create_app(config_class=None):
     app = Flask(__name__)
     app.config.from_object(config_class or get_config())
 
+    from utils.formatters import format_inr
+
+    @app.template_filter("inr")
+    def inr_filter(amount):
+     return format_inr(amount)
+
     # Ensure PDF folder exists
     os.makedirs(app.config.get("PDF_FOLDER", "invoices"), exist_ok=True)
 
