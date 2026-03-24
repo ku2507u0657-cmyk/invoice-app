@@ -31,7 +31,7 @@ def dashboard():
     from extensions import db
     from models import Client, Invoice, InvoiceStatus
 
-    today      = date.today()
+    today       = date.today()
     month_start = today.replace(day=1)
 
     # ── KPI 1: Revenue this month (paid invoices) ─────────────
@@ -190,6 +190,11 @@ def dashboard():
         if total_issued > 0 else 0
     )
 
+# Calculate the highest billing amount for the progress bar logic
+    # If no clients exist, we use 1 as a safe fallback for division
+    amounts = [item["total_billed"] for item in top_clients]
+    max_billed_val = max(amounts) if amounts and max(amounts) > 0 else 1
+
     return render_template(
         "dashboard.html",
         # KPI cards
@@ -199,6 +204,7 @@ def dashboard():
             "unpaid_count":        unpaid_count,
             "unpaid_total":        unpaid_total,
             "overdue_count":       overdue_count,
+             "max_billed"  :              max_billed_val,
             "total_clients":       total_clients,
             "new_clients_30":      new_clients_30,
             "total_revenue":       total_revenue,

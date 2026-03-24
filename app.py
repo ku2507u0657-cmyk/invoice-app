@@ -9,10 +9,18 @@ from config import get_config
 from extensions import db, migrate, login_manager
 
 
+
+
 def create_app(config_class=None):
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config.from_object(config_class or get_config())
+
+    print("CONFIG LOADED:", app.config.get("SQLALCHEMY_DATABASE_URI"))
+    db.init_app(app)
+    migrate.init_app(app, db)
+
+    return app
 
     from utils.formatters import format_inr
 
