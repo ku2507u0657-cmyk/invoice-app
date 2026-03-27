@@ -20,8 +20,6 @@ def create_app(config_class=None):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    return app
-
     from utils.formatters import format_inr
 
     @app.template_filter("inr")
