@@ -9,10 +9,12 @@ Public API
 
 import logging
 import os
-import base64
-import requests
-logger = logging.getLogger(__name__)
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 
+logger = logging.getLogger(__name__)
 
 class EmailError(Exception):
     """Raised when email delivery fails."""
@@ -41,39 +43,38 @@ def send_invoice_email(invoice, app) -> None:
             invoice=invoice,
             company_name=company_name
         )
+        
+        plain_body = _plain_invoice(invoice, company_name)
 
-        # Encode PDF
-        encoded_pdf = base64.b64encode(pdf_bytes).decode()
+        # Construct the email message
+        msg = MIMEMultipart("mixed")
+        msg["From"] = f"{company_name} <{cfg.get('MAIL_FROM_ADDRESS')}>"
+        msg["To"] = recipient
+        msg["Subject"] = subject
 
-        # Send via Resend
-        response = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {os.getenv('RESEND_API_KEY')}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": f"{company_name} <onboarding@resend.dev>",
-                "to": [recipient],
-                "subject": subject,
-                "html": html_body,
-                "attachments": [
-                    {
-                        "filename": f"{invoice.invoice_number}.pdf",
-                        "content": encoded_pdf,
-                    }
-                ],
-            },
+        # Create alternative payload for plain-text and HTML
+        body_part = MIMEMultipart("alternative")
+        body_part.attach(MIMEText(plain_body, "plain"))
+        body_part.attach(MIMEText(html_body, "html"))
+        msg.attach(body_part)
+
+        # Attach PDF if generated successfully
+        if pdf_bytes:
+            pdf_attachment = MIMEApplication(pdf_bytes, Name=f"{invoice.invoice_number}.pdf")
+            pdf_attachment["Content-Disposition"] = f'attachment; filename="{invoice.invoice_number}.pdf"'
+            msg.attach(pdf_attachment)
+
+        # Send via SMTP
+        with smtplib.SMTP(cfg.get("MAIL_SERVER"), cfg.get("MAIL_PORT", 587), timeout=10) as server:
+            server.starttls()
+            server.login(cfg.get("MAIL_USERNAME"), cfg.get("MAIL_PASSWORD"))
+            server.send_message(msg)
+
+        logger.info(
+            "Invoice email sent via SMTP: %s -> %s",
+            invoice.invoice_number,
+            recipient
         )
-
-        if response.status_code == 200:
-            logger.info(
-                "Invoice email sent via Resend: %s -> %s",
-                invoice.invoice_number,
-                recipient
-            )
-        else:
-            raise EmailError(response.text)
 
     except Exception as e:
         raise EmailError(f"Email sending failed: {str(e)}")
@@ -102,37 +103,38 @@ def send_reminder_email(invoice, app, days_overdue: int = 0) -> None:
             company_name=company_name,
             days_overdue=days_overdue
         )
+        
+        plain_body = _plain_reminder(invoice, company_name, days_overdue)
 
-        encoded_pdf = base64.b64encode(pdf_bytes).decode()
+        # Construct the email message
+        msg = MIMEMultipart("mixed")
+        msg["From"] = f"{company_name} <{cfg.get('MAIL_FROM_ADDRESS')}>"
+        msg["To"] = recipient
+        msg["Subject"] = subject
 
-        response = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {os.getenv('RESEND_API_KEY')}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": f"{company_name} <onboarding@resend.dev>",
-                "to": [recipient],
-                "subject": subject,
-                "html": html_body,
-                "attachments": [
-                    {
-                        "filename": f"{invoice.invoice_number}.pdf",
-                        "content": encoded_pdf,
-                    }
-                ],
-            },
+        # Create alternative payload for plain-text and HTML
+        body_part = MIMEMultipart("alternative")
+        body_part.attach(MIMEText(plain_body, "plain"))
+        body_part.attach(MIMEText(html_body, "html"))
+        msg.attach(body_part)
+
+        # Attach PDF if generated successfully
+        if pdf_bytes:
+            pdf_attachment = MIMEApplication(pdf_bytes, Name=f"{invoice.invoice_number}.pdf")
+            pdf_attachment["Content-Disposition"] = f'attachment; filename="{invoice.invoice_number}.pdf"'
+            msg.attach(pdf_attachment)
+
+        # Send via SMTP
+        with smtplib.SMTP(cfg.get("MAIL_SERVER"), cfg.get("MAIL_PORT", 587), timeout=10) as server:
+            server.starttls()
+            server.login(cfg.get("MAIL_USERNAME"), cfg.get("MAIL_PASSWORD"))
+            server.send_message(msg)
+
+        logger.info(
+            "Reminder sent via SMTP: %s -> %s",
+            invoice.invoice_number,
+            recipient
         )
-
-        if response.status_code == 200:
-            logger.info(
-                "Reminder sent via Resend: %s -> %s",
-                invoice.invoice_number,
-                recipient
-            )
-        else:
-            raise EmailError(response.text)
 
     except Exception as e:
         raise EmailError(f"Reminder failed: {str(e)}")
