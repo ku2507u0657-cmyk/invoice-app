@@ -49,6 +49,7 @@ def _form_to_client(client):
 @clients_bp.route("/")
 @login_required
 def list_clients():
+    print("CURRENT USER:", current_user.id, current_user.email)
     search = request.args.get("q", "").strip()
     page   = request.args.get("page", 1, type=int)
 
