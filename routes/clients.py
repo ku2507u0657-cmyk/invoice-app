@@ -7,7 +7,7 @@ from flask import (
     Blueprint, render_template, redirect, url_for,
     request, flash, current_app,
 )
-from flask_login import login_required
+from flask_login import login_required, current_user
 from extensions import db
 from models import Client
 
@@ -52,7 +52,10 @@ def list_clients():
     search = request.args.get("q", "").strip()
     page   = request.args.get("page", 1, type=int)
 
-    query = Client.query.filter_by(is_active=True).order_by(Client.name.asc())
+    query = Client.query.filter_by(
+    is_active=True,
+    admin_id=current_user.id
+)
 
     if search:
         like = f"%{search}%"
@@ -79,7 +82,7 @@ def list_clients():
 @login_required
 def add_client():
     if request.method == "POST":
-        client = Client()
+        client = Client(admin_id=current_user.id)
         ok, err = _form_to_client(client)
         if not ok:
             flash(err, "danger")
@@ -97,7 +100,10 @@ def add_client():
 @clients_bp.route("/<int:client_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_client(client_id):
-    client = db.get_or_404(Client, client_id)
+    client = Client.query.filter_by(
+    id=client_id,
+    admin_id=current_user.id
+).first_or_404()
 
     if request.method == "POST":
         ok, err = _form_to_client(client)
@@ -116,7 +122,10 @@ def edit_client(client_id):
 @clients_bp.route("/<int:client_id>/delete", methods=["POST"])
 @login_required
 def delete_client(client_id):
-    client = db.get_or_404(Client, client_id)
+    client = Client.query.filter_by(
+    id=client_id,
+    admin_id=current_user.id
+).first_or_404()
     name   = client.name
     # Soft-delete: mark inactive instead of hard delete
     client.is_active = False

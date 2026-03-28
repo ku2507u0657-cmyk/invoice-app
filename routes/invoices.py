@@ -12,7 +12,7 @@ from flask import (
     Blueprint, render_template, redirect, url_for,
     request, flash, current_app, jsonify, send_file, abort,
 )
-from flask_login import login_required
+from flask_login import login_required, current_user
 from extensions import db
 from models import Invoice, InvoiceStatus, Client
 
@@ -29,7 +29,9 @@ def list_invoices():
     search        = request.args.get("q",      "").strip()
     page          = request.args.get("page", 1, type=int)
 
-    query = Invoice.query.join(Client).order_by(Invoice.created_at.desc())
+    query = Invoice.query.join(Client).filter(  
+    Client.admin_id == current_user.id
+).order_by(Invoice.created_at.desc())
 
     if status_filter and status_filter in InvoiceStatus.ALL:
         query = query.filter(Invoice.status == status_filter)
@@ -43,15 +45,20 @@ def list_invoices():
 
     pagination = query.paginate(page=page, per_page=15, error_out=False)
 
-    counts = {
-        "all":    Invoice.query.count(),
-        "unpaid": Invoice.query.filter_by(status=InvoiceStatus.UNPAID).count(),
-        "paid":   Invoice.query.filter_by(status=InvoiceStatus.PAID).count(),
-        "overdue": sum(1 for inv in
-                       Invoice.query.filter_by(status=InvoiceStatus.UNPAID).all()
-                       if inv.is_overdue),
-    }
+    base_query = Invoice.query.join(Client).filter(
+    Client.admin_id == current_user.id
+)
 
+    counts = {
+    "all": base_query.count(),
+    "unpaid": base_query.filter(Invoice.status == InvoiceStatus.UNPAID).count(),
+    "paid": base_query.filter(Invoice.status == InvoiceStatus.PAID).count(),
+    "overdue": sum(
+        1 for inv in base_query.filter(Invoice.status == InvoiceStatus.UNPAID).all()
+        if inv.is_overdue
+    ),
+}
+    
     return render_template(
         "invoices/list.html",
         invoices      = pagination.items,
@@ -68,7 +75,10 @@ def list_invoices():
 @invoices_bp.route("/<int:invoice_id>")
 @login_required
 def view_invoice(invoice_id):
-    invoice = db.get_or_404(Invoice, invoice_id)
+    invoice = Invoice.query.join(Client).filter(
+        Invoice.id == invoice_id,
+        Client.admin_id == current_user.id
+    ).first_or_404()
 
     # Generate UPI QR as base64 for embedding in HTML
     qr_b64 = ""
@@ -198,7 +208,10 @@ def create_invoice():
 @invoices_bp.route("/<int:invoice_id>/mark-paid", methods=["POST"])
 @login_required
 def mark_paid(invoice_id):
-    invoice = db.get_or_404(Invoice, invoice_id)
+    invoice = Invoice.query.join(Client).filter(
+        Invoice.id == invoice_id,
+        Client.admin_id == current_user.id
+    ).first_or_404()
 
     if invoice.status == InvoiceStatus.PAID:
         flash(f"{invoice.invoice_number} is already paid.", "warning")
@@ -216,7 +229,10 @@ def mark_paid(invoice_id):
 @invoices_bp.route("/<int:invoice_id>/download")
 @login_required
 def download_pdf(invoice_id):
-    invoice = db.get_or_404(Invoice, invoice_id)
+    invoice = Invoice.query.join(Client).filter(
+        Invoice.id == invoice_id,
+        Client.admin_id == current_user.id
+    ).first_or_404()
 
     # Regenerate if file missing
     if not invoice.pdf_path or not os.path.exists(invoice.pdf_path):
@@ -281,7 +297,10 @@ def gst_preview():
 @invoices_bp.route("/<int:invoice_id>/resend-email", methods=["POST"])
 @login_required
 def resend_email(invoice_id):
-    invoice = db.get_or_404(Invoice, invoice_id)
+    invoice = Invoice.query.join(Client).filter(
+        Invoice.id == invoice_id,
+        Client.admin_id == current_user.id
+    ).first_or_404()
     _dispatch_email(invoice, current_app._get_current_object(), force=True)
     return redirect(url_for("invoices.view_invoice", invoice_id=invoice_id))
 

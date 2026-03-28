@@ -33,6 +33,8 @@ class Admin(UserMixin, TimestampMixin, db.Model):
       1. Username + password  (traditional)
       2. Google OAuth         (google_id + email)
     """
+    clients = db.relationship("Client", backref="admin", lazy=True)
+
     __tablename__ = "admins"
 
     id            = db.Column(db.Integer,     primary_key=True)
@@ -89,6 +91,7 @@ class Client(db.Model):
     is_active   = db.Column(db.Boolean,        default=True, nullable=False)
     created_at  = db.Column(db.DateTime,       nullable=False,
                             default=lambda: datetime.now(timezone.utc))
+    admin_id = db.Column(db.Integer, db.ForeignKey("admins.id"), nullable=False)
 
     invoices = db.relationship("Invoice", back_populates="client",
                                lazy="dynamic", cascade="all, delete-orphan")
