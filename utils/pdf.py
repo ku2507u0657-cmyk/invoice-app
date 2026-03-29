@@ -7,7 +7,7 @@ Design
 - Meta row: Billed To (left)  |  Date Issued / Invoice No. / Amount Due (right)
 - Thick ACCENT (#3F3DBC) divider before items table
 - Items table: Description | Rate | Qty | Amount  (ACCENT header row)
-- GST summary: Subtotal → GST @ 18% → Total
+- GST summary: Subtotal → GST @ {rate}% → Total
 - Notes + Terms footer sections
 - UPI QR code block (right of totals) when UPI_ID is configured
 - Rupee symbol via \\u20B9 — no custom font required
@@ -324,7 +324,7 @@ def _render(invoice, app) -> bytes:
             [_mv(invoice.created_at.strftime("%d/%m/%Y")),
              _mv(invoice.invoice_number),
              _mv(total_display, bold=True)],
-            [_ml("Due Date"),     _ml("Status"),           Spacer(1,1)],
+            [_ml("Due Date"),     _ml("Status"),          Spacer(1,1)],
             [_mv(invoice.due_date.strftime("%d/%m/%Y")),
              badge,
              Spacer(1,1)],
@@ -423,7 +423,7 @@ def _render(invoice, app) -> bytes:
 
     tots_data = [
         _tr("Subtotal",  amount_display),
-        _tr("GST @ 18%", gst_display),
+        _tr(f"GST @ {invoice.gst_rate_display}", gst_display),
         _tr("Total",     total_display, bold=True, highlight=True),
     ]
     tots_tbl = Table(tots_data, colWidths=[spacer_w, label_w, value_w])

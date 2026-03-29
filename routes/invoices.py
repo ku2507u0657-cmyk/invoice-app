@@ -1,6 +1,6 @@
 """
 routes/invoices.py — Invoice management: list, create, view, mark-paid,
-                      download PDF, CSV export.
+                     download PDF, CSV export.
 All routes require @login_required.
 """
 
@@ -30,8 +30,8 @@ def list_invoices():
     page          = request.args.get("page", 1, type=int)
 
     query = Invoice.query.join(Client).filter(  
-    Client.admin_id == current_user.id
-).order_by(Invoice.created_at.desc())
+        Client.admin_id == current_user.id
+    ).order_by(Invoice.created_at.desc())
 
     if status_filter and status_filter in InvoiceStatus.ALL:
         query = query.filter(Invoice.status == status_filter)
@@ -46,18 +46,18 @@ def list_invoices():
     pagination = query.paginate(page=page, per_page=15, error_out=False)
 
     base_query = Invoice.query.join(Client).filter(
-    Client.admin_id == current_user.id
-)
+        Client.admin_id == current_user.id
+    )
 
     counts = {
-    "all": base_query.count(),
-    "unpaid": base_query.filter(Invoice.status == InvoiceStatus.UNPAID).count(),
-    "paid": base_query.filter(Invoice.status == InvoiceStatus.PAID).count(),
-    "overdue": sum(
-        1 for inv in base_query.filter(Invoice.status == InvoiceStatus.UNPAID).all()
-        if inv.is_overdue
-    ),
-}
+        "all": base_query.count(),
+        "unpaid": base_query.filter(Invoice.status == InvoiceStatus.UNPAID).count(),
+        "paid": base_query.filter(Invoice.status == InvoiceStatus.PAID).count(),
+        "overdue": sum(
+            1 for inv in base_query.filter(Invoice.status == InvoiceStatus.UNPAID).all()
+            if inv.is_overdue
+        ),
+    }
     
     return render_template(
         "invoices/list.html",
@@ -117,6 +117,10 @@ def create_invoice():
         amount_raw = request.form.get("amount",    "").strip()
         due_date_s = request.form.get("due_date",  "").strip()
         notes      = request.form.get("notes",     "").strip()
+        
+        # New GST fields
+        gst_rate_raw = request.form.get("gst_rate", "18.0").strip()
+        custom_gst_rate_raw = request.form.get("custom_gst_rate", "").strip()
 
         errors = []
         client = None
@@ -145,6 +149,26 @@ def create_invoice():
                 due_date = date.fromisoformat(due_date_s)
             except ValueError:
                 errors.append("Due date format is invalid.")
+                
+        # Validate GST Rate
+        final_gst_rate = 18.0
+        if gst_rate_raw.lower() == "custom":
+            if not custom_gst_rate_raw:
+                errors.append("Custom GST rate is required when 'Custom' is selected.")
+            else:
+                try:
+                    final_gst_rate = float(custom_gst_rate_raw)
+                    if final_gst_rate < 0:
+                        errors.append("GST rate cannot be negative.")
+                except ValueError:
+                    errors.append("Custom GST rate must be a valid number.")
+        else:
+            try:
+                final_gst_rate = float(gst_rate_raw)
+                if final_gst_rate < 0:
+                    errors.append("GST rate cannot be negative.")
+            except ValueError:
+                errors.append("Selected GST rate is invalid.")
 
         if errors:
             for err in errors:
@@ -158,12 +182,13 @@ def create_invoice():
             )
 
         # ── GST calculation & persist ──────────────────────────
-        gst_amount, total = Invoice.calculate_gst(amount)
+        gst_amount, total = Invoice.calculate_gst(amount, rate=final_gst_rate)
 
         invoice = Invoice(
             invoice_number = Invoice.next_invoice_number(),
             client_id      = int(client_id),
             amount         = amount,
+            gst_rate       = final_gst_rate,
             gst            = gst_amount,
             total          = total,
             due_date       = due_date,
@@ -280,12 +305,13 @@ def export_csv():
 def gst_preview():
     try:
         amount = float(request.args.get("amount", 0))
-        if amount < 0:
+        rate = float(request.args.get("rate", 18.0))
+        if amount < 0 or rate < 0:
             raise ValueError
     except ValueError:
-        return jsonify({"error": "invalid amount"}), 400
+        return jsonify({"error": "invalid amount or rate"}), 400
 
-    gst, total = Invoice.calculate_gst(amount)
+    gst, total = Invoice.calculate_gst(amount, rate=rate)
     return jsonify({
         "gst":   f"{float(gst):,.2f}",
         "total": f"{float(total):,.2f}",

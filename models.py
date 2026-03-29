@@ -10,7 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 
 
-GST_RATE = Decimal("0.18")   # 18% GST
+DEFAULT_GST_RATE = Decimal("18.0")   # Default 18% GST
 
 
 class TimestampMixin:
@@ -147,7 +147,8 @@ class Invoice(db.Model):
     invoice_number  – e.g. INV-0042
     client_id       – FK → clients.id
     amount          – base amount before GST
-    gst             – GST at 18%
+    gst_rate        – GST percentage applied (e.g. 18.0)
+    gst             – Calculated GST amount based on gst_rate
     total           – amount + gst
     due_date        – payment due date
     status          – unpaid | paid | overdue
@@ -165,6 +166,7 @@ class Invoice(db.Model):
     client_id      = db.Column(db.Integer,        db.ForeignKey("clients.id"),
                                 nullable=False, index=True)
     amount         = db.Column(db.Numeric(10, 2), nullable=False)
+    gst_rate       = db.Column(db.Numeric(5, 2),  nullable=False, default=18.00)
     gst            = db.Column(db.Numeric(10, 2), nullable=False)
     total          = db.Column(db.Numeric(10, 2), nullable=False)
     due_date       = db.Column(db.Date,           nullable=False)
@@ -197,10 +199,11 @@ class Invoice(db.Model):
         return f"INV-{seq:04d}"
 
     @classmethod
-    def calculate_gst(cls, amount):
+    def calculate_gst(cls, amount, rate=18.0):
         """Return (gst_amount, total) as Decimals rounded to 2 d.p."""
         base  = Decimal(str(amount))
-        gst   = (base * GST_RATE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        rate_decimal = Decimal(str(rate)) / Decimal("100")
+        gst   = (base * rate_decimal).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         total = base + gst
         return gst, total
 
@@ -228,6 +231,12 @@ class Invoice(db.Model):
     @property
     def amount_display(self):
         return f"\u20b9{float(self.amount):,.2f}"
+    
+    @property
+    def gst_rate_display(self):
+        """Helper to cleanly display the percentage (e.g. 18% or 12.5%)."""
+        rate_float = float(self.gst_rate)
+        return f"{rate_float:g}%"
 
     @property
     def gst_display(self):
@@ -251,6 +260,7 @@ class Invoice(db.Model):
             "client_id":      self.client_id,
             "client_name":    self.client.name if self.client else None,
             "amount":         float(self.amount),
+            "gst_rate":       float(self.gst_rate),
             "gst":            float(self.gst),
             "total":          float(self.total),
             "due_date":       self.due_date.isoformat(),
