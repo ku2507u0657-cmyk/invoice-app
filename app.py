@@ -7,7 +7,7 @@ import os
 from flask import Flask
 from config import get_config
 from extensions import db, migrate, login_manager
-
+from sqlalchemy import text
 
 
 
@@ -52,8 +52,38 @@ def create_app(config_class=None):
         return db.session.get(Admin, int(user_id))
 
     # ── Database init + seed ──────────────────────────────────
+    def add_missing_columns():
+        try:
+            db.session.execute(text("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name='invoices' AND column_name='gst_rate'
+                    ) THEN
+                        ALTER TABLE invoices ADD COLUMN gst_rate FLOAT DEFAULT 0;
+                    END IF;
+
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name='invoices' AND column_name='gst'
+                    ) THEN
+                        ALTER TABLE invoices ADD COLUMN gst FLOAT DEFAULT 0;
+                    END IF;
+                END
+                $$;
+            """))
+
+            db.session.commit()
+            print("GST columns added or already exist")
+
+        except Exception as e:
+            print("Error adding columns:", e)
+
+
     with app.app_context():
         db.create_all()
+        add_missing_columns()
        # _seed_admin(app)
 
     # ── Background scheduler ──────────────────────────────────
