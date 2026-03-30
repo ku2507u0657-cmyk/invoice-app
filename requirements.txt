@@ -37,3 +37,5 @@ gunicorn==23.0.0
 requests==2.32.3
 
 flask-migrate==4.0.7
+qrcode
+pillow

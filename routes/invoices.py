@@ -10,11 +10,11 @@ from datetime import date, timedelta
 
 from flask import (
     Blueprint, render_template, redirect, url_for,
-    request, flash, current_app, jsonify, send_file, abort,
+    request, flash, current_app, jsonify, send_file, abort, session
 )
 from flask_login import login_required, current_user
 from extensions import db
-from models import Invoice, InvoiceStatus, Client
+from models import Invoice, InvoiceStatus, Client, BusinessProfile
 
 logger = logging.getLogger(__name__)
 invoices_bp = Blueprint("invoices", __name__, url_prefix="/invoices")
@@ -91,18 +91,16 @@ def view_invoice(invoice_id):
     except Exception:
         pass
 
-    return render_template(
-        "invoices/view.html",
-        invoice  = invoice,
-        qr_b64   = qr_b64,
-        upi_id   = current_app.config.get("UPI_ID", ""),
-        app_name = current_app.config.get("APP_NAME", "InvoiceFlow"),
-        company_name    = current_app.config.get("COMPANY_NAME", ""),
-        company_address = current_app.config.get("COMPANY_ADDRESS", ""),
-        company_phone   = current_app.config.get("COMPANY_PHONE", ""),
-        company_email   = current_app.config.get("COMPANY_EMAIL", ""),
-        company_gstin   = current_app.config.get("COMPANY_GSTIN", ""),
-    )
+    user_id = session.get("user_id")
+    if not user_id and current_user.is_authenticated:
+        user_id = current_user.google_id
+        
+    business_profile = BusinessProfile.query.filter_by(user_id=user_id).first()
+    
+    if not business_profile or not business_profile.business_name:
+        flash("Please complete your Business Profile before creating an invoice.", "warning")
+        return redirect(url_for('main.profile'))
+    # ───────────────────────────────────────────────────────────
 
 
 # ── Create ────────────────────────────────────────────────────
@@ -110,6 +108,17 @@ def view_invoice(invoice_id):
 @invoices_bp.route("/create", methods=["GET", "POST"])
 @login_required
 def create_invoice():
+    # ── NEW: Profile Enforcement ───────────────────────────────
+    user_id = session.get("user_id")
+    if not user_id and current_user.is_authenticated:
+        user_id = current_user.google_id
+        
+    business_profile = BusinessProfile.query.filter_by(user_id=user_id).first()
+    
+    if not business_profile or not business_profile.business_name:
+        flash("Please complete your Business Profile before creating an invoice.", "warning")
+        return redirect(url_for('main.profile'))
+    # ───────────────────────────────────────────────────────────
     clients = Client.query.filter_by(is_active=True).order_by(Client.name.asc()).all()
 
     if request.method == "POST":

@@ -223,6 +223,69 @@ def dashboard():
         app_name=current_app.config.get("APP_NAME", "InvoiceFlow"),
     )
 
+from flask import render_template, request, redirect, url_for, flash, session
+from flask_login import login_required, current_user
+from extensions import db
+from models import BusinessProfile
+
+# ── Business Profile ──────────────────────────────────────────
+
+@main_bp.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    # Grab the google_id from the session as per your setup
+    user_id = session.get("user_id")
+    
+    # Quick fallback just in case it's stored directly on current_user
+    if not user_id and current_user.is_authenticated:
+        user_id = current_user.google_id
+
+    if not user_id:
+        flash("Please log in to access your business profile.", "danger")
+        return redirect(url_for('auth.login'))
+
+    # Fetch existing profile
+    profile_data = BusinessProfile.query.filter_by(user_id=user_id).first()
+
+    if request.method == 'POST':
+        business_name = request.form.get('business_name', '').strip()
+        gst_number    = request.form.get('gst_number', '').strip()
+        upi_id        = request.form.get('upi_id', '').strip()
+        phone         = request.form.get('phone', '').strip()
+        address       = request.form.get('address', '').strip()
+
+        if not business_name:
+            flash("Business Name is required.", "danger")
+            return redirect(url_for('main.profile'))
+
+        # UPSERT Logic
+        if profile_data:
+            # Update existing record
+            profile_data.business_name = business_name
+            profile_data.gst_number    = gst_number
+            profile_data.upi_id        = upi_id
+            profile_data.phone         = phone
+            profile_data.address       = address
+        else:
+            # Create new record
+            profile_data = BusinessProfile(
+                user_id=user_id,
+                business_name=business_name,
+                gst_number=gst_number,
+                upi_id=upi_id,
+                phone=phone,
+                address=address
+            )
+            db.session.add(profile_data)
+
+        db.session.commit()
+        flash("Business profile saved successfully.", "success")
+        return redirect(url_for('main.profile'))
+
+    return render_template('profile.html', 
+                           profile=profile_data, 
+                           app_name="InvoiceFlow")
+
 
 # ── Health ────────────────────────────────────────────────────
 

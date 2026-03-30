@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Business Profile — {{ app_name }}{% endblock %}
+{% block page_title %}Business Profile{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <div class="dash-panel">
+    <div class="panel-header" style="border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px;">
+      <div>
+        <h2 class="panel-title">Your Business Details</h2>
+        <p class="panel-subtitle">These details will be used automatically when generating your PDF invoices.</p>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('main.profile') }}" class="client-form">
+      
+      <div class="form-row two-col">
+        <div class="form-group">
+          <label class="form-label required" for="business_name">Business Name</label>
+          <div class="input-wrap">
+            <i class="bi bi-building input-icon"></i>
+            <input type="text" id="business_name" name="business_name" class="form-field"
+                   placeholder="Enter your business name"
+                   value="{{ profile.business_name if profile else '' }}" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="gst_number">GST Number</label>
+          <div class="input-wrap">
+            <i class="bi bi-receipt input-icon"></i>
+            <input type="text" id="gst_number" name="gst_number" class="form-field"
+                   placeholder="e.g. 22AAAAA0000A1Z5"
+                   value="{{ profile.gst_number if profile else '' }}" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row two-col">
+        <div class="form-group">
+          <label class="form-label" for="upi_id">UPI ID for Payments</label>
+          <div class="input-wrap">
+            <i class="bi bi-qr-code input-icon"></i>
+            <input type="text" id="upi_id" name="upi_id" class="form-field"
+                   placeholder="e.g. yourname@upi"
+                   value="{{ profile.upi_id if profile else '' }}" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="phone">Phone Number</label>
+          <div class="input-wrap">
+            <i class="bi bi-telephone input-icon"></i>
+            <input type="text" id="phone" name="phone" class="form-field"
+                   placeholder="+91 98765 43210"
+                   value="{{ profile.phone if profile else '' }}" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group full-width">
+          <label class="form-label" for="address">Full Business Address</label>
+          <div class="input-wrap">
+            <i class="bi bi-geo-alt input-icon"></i>
+            <input type="text" id="address" name="address" class="form-field"
+                   placeholder="Street, City, State, PIN"
+                   value="{{ profile.address if profile else '' }}" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions" style="margin-top: 24px;">
+        <button type="submit" class="btn-submit" style="width: 100%; justify-content: center;">
+          <i class="bi bi-save"></i> Save Profile Details
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}

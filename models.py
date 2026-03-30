@@ -269,3 +269,17 @@ class Invoice(db.Model):
             "pdf_path":       self.pdf_path,
             "created_at":     self.created_at.isoformat(),
         }
+class BusinessProfile(db.Model):
+    """User's business details used for generating PDF invoices."""
+    __tablename__ = "business_profiles"
+
+    id            = db.Column(db.Integer, primary_key=True)
+    user_id       = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    business_name = db.Column(db.String(200), nullable=False)
+    gst_number    = db.Column(db.String(50),  nullable=True)
+    address       = db.Column(db.Text,        nullable=True)
+    upi_id        = db.Column(db.String(100), nullable=True)
+    phone         = db.Column(db.String(50),  nullable=True)
+
+    def __repr__(self):
+        return f"<BusinessProfile user_id={self.user_id} name={self.business_name!r}>"
