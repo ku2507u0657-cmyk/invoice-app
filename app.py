@@ -38,7 +38,9 @@ def create_app(config_class=None):
     from routes.auth     import auth_bp
     from routes.clients  import clients_bp
     from routes.invoices import invoices_bp
-
+    from routes.bills import bills_bp
+    
+    app.register_blueprint(bills_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(clients_bp)
