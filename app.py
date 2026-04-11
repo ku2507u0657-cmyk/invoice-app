@@ -118,7 +118,7 @@ def _seed_admin(app):
 
 # Module-level app for Gunicorn: gunicorn app:app
 app = create_app()
-
+app = app # This helps Vercel identify the WSGI object
 if __name__ == "__main__":
     app.run(
         debug = app.config.get("DEBUG", False),
