@@ -288,22 +288,22 @@ class BusinessProfile(db.Model):
 
 class Bill(db.Model):
     __tablename__ = 'bills'
-    id = db.Model.Column(db.Integer, primary_key=True)
-    admin_id = db.Model.Column(db.String, nullable=False) # Tumhari Google ID string
-    client_id = db.Model.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
-    bill_number = db.Model.Column(db.String(50), nullable=False, unique=True)
-    date = db.Model.Column(db.Date, default=datetime.utcnow().date)
-    grand_total = db.Model.Column(db.Float, default=0.0)
-    status = db.Model.Column(db.String(20), default='UNPAID') # PAID ya UNPAID
+    id = db.Column(db.Integer, primary_key=True)
+    admin_id = db.Column(db.String, nullable=False) # Tumhari Google ID string
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
+    bill_number = db.Column(db.String(50), nullable=False, unique=True)
+    date = db.Column(db.Date, default=datetime.utcnow().date)
+    grand_total = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(20), default='UNPAID') # PAID ya UNPAID
 
     # Ek bill ke andar bohot saare items ho sakte hain
     items = db.relationship('BillItem', backref='bill', lazy=True, cascade="all, delete-orphan")
 
 class BillItem(db.Model):
     __tablename__ = 'bill_items'
-    id = db.Model.Column(db.Integer, primary_key=True)
-    bill_id = db.Model.Column(db.Integer, db.ForeignKey('bills.id'), nullable=False)
-    item_name = db.Model.Column(db.String(255), nullable=False)
-    quantity = db.Model.Column(db.Integer, default=1)
-    mrp = db.Model.Column(db.Float, nullable=False)
-    total_price = db.Model.Column(db.Float, nullable=False) # Qty * MRP
+    id = db.Column(db.Integer, primary_key=True)
+    bill_id = db.Column(db.Integer, db.ForeignKey('bills.id'), nullable=False)
+    item_name = db.Column(db.String(255), nullable=False)
+    quantity = db.Column(db.Integer, default=1)
+    mrp = db.Column(db.Float, nullable=False)
+    total_price = db.Column(db.Float, nullable=False) # Qty * MRP
